@@ -40,9 +40,15 @@ module CachedResource
       # for the request.
       def find_via_reload(key, *arguments)
         object = find_without_cache(*arguments)
-        cache_collection_synchronize(object, *arguments) if cached_resource.collection_synchronize
-        cache_write(key, object)
-        cache_read(key)
+        Thread.new do
+          begin
+            cache_collection_synchronize(object, *arguments) if cached_resource.collection_synchronize
+            cache_write(key, object)
+            cache_read(key)
+          rescue ThreadError
+          end
+        end.join
+        object
       end
 
       # If this is a pure, unadulterated "all" request
