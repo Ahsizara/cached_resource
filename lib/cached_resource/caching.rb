@@ -4,6 +4,8 @@ module CachedResource
   module Caching
     extend ActiveSupport::Concern
 
+    MAX_ARGUMENTS_CACHE_SIZE = 150
+
     included do
       class << self
         alias_method :find_without_cache, :find
@@ -119,7 +121,16 @@ module CachedResource
 
       # Generate the request cache key.
       def cache_key(*arguments)
-        "#{name.parameterize.gsub("-", "/")}/#{arguments.join('/')}".downcase.delete(' ')
+        "#{name.parameterize.gsub("-", "/")}/#{arguments_cache_key(*arguments)}".downcase.delete(' ')
+      end
+
+      def arguments_cache_key(*arguments)
+        arguments_string = arguments.join('/')
+        arguments_string.length > MAX_ARGUMENTS_CACHE_SIZE ? hash_string(arguments_string) : arguments_string
+      end
+
+      def hash_string(string)
+        Digest::SHA2.hexdigest(string)
       end
 
       # Make a full duplicate of an ActiveResource record.
